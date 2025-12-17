@@ -131,20 +131,23 @@ app.get("/riddles", async (req, res) => {
 
 // Create a new riddle
 app.post("/riddles", async (req, res) => {
-  const { question, answer, hint } = req.body;
+  const { name, riddle: riddleText, hint, encryptedData, createdBy } = req.body;
 
   try {
-    const riddle = await prisma.riddle.create({
+    const newRiddle = await prisma.riddle.create({
       data: {
-        question,
-        answer,
-        hint: hint || null
+        name,
+        riddle: riddleText,
+        hint: hint || "",
+        encryptedData: encryptedData || "",
+        createdBy: createdBy || 1,
+        updatedBy: createdBy || 1
       }
     });
 
     res.status(201).json({
       message: "Riddle created successfully",
-      riddle
+      riddle: newRiddle
     });
   } catch (err) {
     console.error(err);
@@ -157,21 +160,23 @@ app.post("/riddles", async (req, res) => {
 // Update a riddle
 app.put("/riddles/:id", async (req, res) => {
   const riddleId = parseInt(req.params.id);
-  const { question, answer, hint } = req.body;
+  const { name, riddle: riddleText, hint, encryptedData, updatedBy } = req.body;
 
   try {
-    const riddle = await prisma.riddle.update({
+    const updatedRiddle = await prisma.riddle.update({
       where: { id: riddleId },
       data: {
-        question,
-        answer,
-        hint: hint || null
+        name,
+        riddle: riddleText,
+        hint: hint || "",
+        encryptedData: encryptedData || "",
+        updatedBy: updatedBy || 1
       }
     });
 
     res.json({
       message: "Riddle updated successfully",
-      riddle
+      riddle: updatedRiddle
     });
   } catch (err) {
     console.error(err);
@@ -200,6 +205,6 @@ app.delete("/riddles/:id", async (req, res) => {
   }
 });
 
-app.listen(4000, () => {
-  console.log("Backend running on http://localhost:4000");
+app.listen(5000, "0.0.0.0", () => {
+  console.log("Backend running on http://0.0.0.0:5000");
 });

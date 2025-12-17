@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  fullName    String
+  email       String   @unique
+  password    String
+  phoneNumber String?  @unique
+  department  String
+  deptRollNo  String
+  isMod       Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model Riddle {
+  id            Int      @id @default(autoincrement())
+  name          String
+  riddle        String
+  hint          String
+  encryptedData String
+  createdAt     DateTime @default(now())
+  createdBy     Int
+  updatedAt     DateTime @updatedAt
+  updatedBy     Int
+}
+
+model emailAuth {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  otp        String
+  isVerified Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+}
+
+model scans {
+  id              Int      @id @default(autoincrement())
+  scannedByUserId Int
+  riddleHint      String
+  createdAt       DateTime
+}
