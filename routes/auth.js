@@ -1,20 +1,9 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
-import nodemailer from "nodemailer";
 
 const router = express.Router();
 const prisma = new PrismaClient();
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
 
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
@@ -26,7 +15,7 @@ router.post("/register", async (req, res) => {
   try {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: "User already exists" });
+      return res.status(400).json({ success: false, error: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -47,22 +36,16 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      await transporter.sendMail({
-        from: process.env.SMTP_USER,
-        to: email,
-        subject: "Verify your email",
-        text: `Your OTP is: ${otp}. It expires in 10 minutes.`,
-      });
-    }
+    console.log(`OTP for ${email}: ${otp}`);
 
     res.status(201).json({
+      success: true,
       message: "User registered. Please verify your email.",
       userId: user.id,
     });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ error: "Registration failed" });
+    res.status(400).json({ success: false, error: "Registration failed" });
   }
 });
 
@@ -72,16 +55,16 @@ router.post("/verify-otp", async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.otpHash) {
-      return res.status(400).json({ error: "Invalid request" });
+      return res.status(400).json({ success: false, error: "Invalid request" });
     }
 
     if (new Date() > user.otpExpiresAt) {
-      return res.status(400).json({ error: "OTP expired" });
+      return res.status(400).json({ success: false, error: "OTP expired" });
     }
 
     const isValid = await bcrypt.compare(otp, user.otpHash);
     if (!isValid) {
-      return res.status(400).json({ error: "Invalid OTP" });
+      return res.status(400).json({ success: false, error: "Invalid OTP" });
     }
 
     await prisma.user.update({
@@ -89,10 +72,10 @@ router.post("/verify-otp", async (req, res) => {
       data: { emailVerified: true, otpHash: null, otpExpiresAt: null },
     });
 
-    res.json({ message: "Email verified successfully" });
+    res.json({ success: true, message: "Email verified successfully" });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ error: "Verification failed" });
+    res.status(400).json({ success: false, error: "Verification failed" });
   }
 });
 
@@ -102,19 +85,20 @@ router.post("/login", async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
 
     const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
-      return res.status(401).json({ error: "Invalid credentials" });
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
 
     if (!user.emailVerified) {
-      return res.status(401).json({ error: "Please verify your email first" });
+      return res.status(401).json({ success: false, error: "Please verify your email first" });
     }
 
     res.json({
+      success: true,
       message: "Login successful",
       user: {
         id: user.id,
@@ -125,7 +109,38 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ error: "Login failed" });
+    res.status(400).json({ success: false, error: "Login failed" });
+  }
+});
+
+router.post("/resend-otp", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ success: false, error: "User not found" });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ success: false, error: "Email already verified" });
+    }
+
+    const otp = generateOTP();
+    const otpHash = await bcrypt.hash(otp, 10);
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+    await prisma.user.update({
+      where: { email },
+      data: { otpHash, otpExpiresAt },
+    });
+
+    console.log(`New OTP for ${email}: ${otp}`);
+
+    res.json({ success: true, message: "OTP resent successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ success: false, error: "Failed to resend OTP" });
   }
 });
 

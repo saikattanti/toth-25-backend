@@ -18,10 +18,10 @@ router.get("/", async (req, res) => {
         createdAt: true,
       },
     });
-    res.json({ count: users.length, users });
+    res.json({ success: true, count: users.length, users });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch users" });
+    res.status(500).json({ success: false, error: "Failed to fetch users" });
   }
 });
 
@@ -43,13 +43,13 @@ router.get("/:id", async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({ success: false, error: "User not found" });
     }
 
-    res.json(user);
+    res.json({ success: true, user });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Failed to fetch user" });
+    res.status(500).json({ success: false, error: "Failed to fetch user" });
   }
 });
 
@@ -58,10 +58,10 @@ router.delete("/:id", async (req, res) => {
 
   try {
     await prisma.user.delete({ where: { id: userId } });
-    res.json({ message: "User deleted successfully" });
+    res.json({ success: true, message: "User deleted successfully" });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ error: "Failed to delete user" });
+    res.status(400).json({ success: false, error: "Failed to delete user" });
   }
 });
 
