@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
@@ -10,20 +9,31 @@ import usersRoutes from "./routes/users.js";
 // -------------------- Load ENV --------------------
 dotenv.config();
 
-// -------------------- Init --------------------
+// -------------------- Init App --------------------
 const app = express();
+
+// -------------------- Prisma --------------------
 const prisma = global.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== "production") global.prisma = prisma;
 
-// -------------------- Middleware --------------------
+// -------------------- Logger --------------------
 app.use(morgan("dev"));
-app.use(
-  cors({
-    origin: "*", // change to your frontend URL in production
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+
+// -------------------- CORS (Replit SAFE) --------------------
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
+// -------------------- Body Parser --------------------
 app.use(express.json({ limit: "1mb" }));
 
 // -------------------- Routes --------------------
@@ -40,25 +50,38 @@ app.get("/health", async (req, res) => {
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
-  } catch (err) {
-    res.status(500).json({ status: "error", database: "disconnected" });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      database: "disconnected",
+    });
   }
 });
 
 // -------------------- Root --------------------
 app.get("/", (req, res) => {
-  res.json({ status: "ok", message: "Backend is running!", timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    message: "Backend is running!",
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// -------------------- 404 --------------------
+// -------------------- 404 Handler --------------------
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
 // -------------------- Global Error Handler --------------------
 app.use((err, req, res, next) => {
   console.error("🔥 Unhandled error:", err);
-  res.status(500).json({ success: false, message: "Internal server error" });
+  res.status(500).json({
+    success: false,
+    message: "Internal server error",
+  });
 });
 
 // -------------------- Graceful Shutdown --------------------
@@ -67,11 +90,13 @@ const shutdown = async (signal) => {
   await prisma.$disconnect();
   process.exit(0);
 };
+
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 // -------------------- Start Server --------------------
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
