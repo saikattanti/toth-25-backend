@@ -16,17 +16,15 @@ const prisma = global.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== "production") global.prisma = prisma;
 
 // -------------------- Middleware --------------------
-app.use(morgan("dev")); // request logger
-
+app.use(morgan("dev"));
 app.use(
   cors({
-    origin: "*", // 🔒 restrict in production
+    origin: "*", // change to your frontend URL in production
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-app.use(express.json({ limit: "1mb" })); // prevent large payload abuse
+app.use(express.json({ limit: "1mb" }));
 
 // -------------------- Routes --------------------
 app.use("/auth", authRoutes);
@@ -43,37 +41,24 @@ app.get("/health", async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
-    res.status(500).json({
-      status: "error",
-      database: "disconnected",
-    });
+    res.status(500).json({ status: "error", database: "disconnected" });
   }
 });
 
 // -------------------- Root --------------------
 app.get("/", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "Backend is running!",
-    timestamp: new Date().toISOString(),
-  });
+  res.json({ status: "ok", message: "Backend is running!", timestamp: new Date().toISOString() });
 });
 
-// -------------------- 404 Handler --------------------
+// -------------------- 404 --------------------
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-  });
+  res.status(404).json({ success: false, message: "Route not found" });
 });
 
 // -------------------- Global Error Handler --------------------
 app.use((err, req, res, next) => {
   console.error("🔥 Unhandled error:", err);
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-  });
+  res.status(500).json({ success: false, message: "Internal server error" });
 });
 
 // -------------------- Graceful Shutdown --------------------
@@ -82,7 +67,6 @@ const shutdown = async (signal) => {
   await prisma.$disconnect();
   process.exit(0);
 };
-
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 

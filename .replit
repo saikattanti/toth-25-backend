@@ -39,7 +39,7 @@ run = ["node", "index.js"]
 
 [[ports]]
 localPort = 3000
-externalPort = 80
+externalPort = 3000
 
 [[ports]]
 localPort = 4000
@@ -47,4 +47,4 @@ externalPort = 4200
 
 [[ports]]
 localPort = 5000
-externalPort = 80
+externalPort = 5000
