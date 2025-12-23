@@ -1,102 +1,76 @@
+// backend/index.js
 import express from "express";
+import cors from "cors";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
 
-import authRoutes from "./routes/auth.js";
-import usersRoutes from "./routes/users.js";
+import authRoutes from "./routes/api/auth.js";
+import usersRoutes from "./routes/api/users.js";
 
-// -------------------- Load ENV --------------------
+// -------------------- ENV --------------------
 dotenv.config();
 
-// -------------------- Init App --------------------
+// -------------------- APP --------------------
 const app = express();
+const prisma = new PrismaClient();
 
-// -------------------- Prisma --------------------
-const prisma = global.prisma || new PrismaClient();
-if (process.env.NODE_ENV !== "production") global.prisma = prisma;
-
-// -------------------- Logger --------------------
+// -------------------- MIDDLEWARE --------------------
 app.use(morgan("dev"));
 
-// -------------------- CORS (Replit SAFE) --------------------
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+app.use(
+  cors({
+    origin: process.env.NEXT_PUBLIC_FRONTEND_URL || "*", // allow frontend
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+app.options("*", cors()); // Preflight
 
-  next();
-});
+app.use(express.json());
 
-// -------------------- Body Parser --------------------
-app.use(express.json({ limit: "1mb" }));
+// -------------------- ROUTES --------------------
+app.use("/auth", authRoutes); // /auth/register, /auth/login, /auth/verify-otp
+app.use("/users", usersRoutes); // /users GET & DELETE
 
-// -------------------- Routes --------------------
-app.use("/auth", authRoutes);
-app.use("/users", usersRoutes);
-
-// -------------------- Health Check --------------------
+// -------------------- HEALTH CHECK --------------------
 app.get("/health", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
     res.json({
       status: "ok",
-      database: "connected",
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    res.status(500).json({
-      status: "error",
-      database: "disconnected",
-    });
+  } catch (err) {
+    console.error("DB health check error:", err);
+    res.status(500).json({ status: "db_error" });
   }
 });
 
-// -------------------- Root --------------------
+// -------------------- ROOT --------------------
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
-    message: "Backend is running!",
-    timestamp: new Date().toISOString(),
+    message: "Backend running",
   });
 });
 
-// -------------------- 404 Handler --------------------
+// -------------------- 404 HANDLER --------------------
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-  });
+  res.status(404).json({ success: false, message: "Route not found" });
 });
 
-// -------------------- Global Error Handler --------------------
+// -------------------- GLOBAL ERROR HANDLER --------------------
 app.use((err, req, res, next) => {
-  console.error("🔥 Unhandled error:", err);
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-  });
+  console.error("🔥 Server Error:", err);
+  res.status(500).json({ success: false, message: "Server error" });
 });
 
-// -------------------- Graceful Shutdown --------------------
-const shutdown = async (signal) => {
-  console.log(`🛑 ${signal} received. Shutting down...`);
-  await prisma.$disconnect();
-  process.exit(0);
-};
-
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
-
-// -------------------- Start Server --------------------
+// -------------------- START SERVER --------------------
 const PORT = process.env.PORT || 5000;
-
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Backend live on port ${PORT}`);
 });
