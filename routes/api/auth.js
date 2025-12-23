@@ -1,3 +1,4 @@
+// backend/routes/api/auth.js
 import express from "express";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
@@ -5,10 +6,15 @@ import { PrismaClient } from "@prisma/client";
 const router = express.Router();
 const prisma = new PrismaClient();
 
+/**
+ * Generate a 4-digit OTP
+ * @returns {string} OTP
+ */
 function generateOTP() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
+// -------------------- REGISTER --------------------
 router.post("/register", async (req, res) => {
   const { fullName, email, password, phoneNumber, department, deptRollNo } = req.body;
 
@@ -36,7 +42,7 @@ router.post("/register", async (req, res) => {
       },
     });
 
-    console.log(`OTP for ${email}: ${otp}`);
+    console.log(`OTP for ${email}: ${otp}`); // For testing purposes only
 
     res.status(201).json({
       success: true,
@@ -45,10 +51,11 @@ router.post("/register", async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ success: false, error: "Registration failed" });
+    res.status(500).json({ success: false, error: "Registration failed" });
   }
 });
 
+// -------------------- VERIFY OTP --------------------
 router.post("/verify-otp", async (req, res) => {
   const { email, otp } = req.body;
 
@@ -75,10 +82,11 @@ router.post("/verify-otp", async (req, res) => {
     res.json({ success: true, message: "Email verified successfully" });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ success: false, error: "Verification failed" });
+    res.status(500).json({ success: false, error: "Verification failed" });
   }
 });
 
+// -------------------- LOGIN --------------------
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -94,7 +102,7 @@ router.post("/login", async (req, res) => {
     }
 
     if (!user.emailVerified) {
-      return res.status(401).json({ success: false, error: "Please verify your email first" });
+      return res.status(403).json({ success: false, error: "Please verify your email first" });
     }
 
     res.json({
@@ -109,10 +117,11 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ success: false, error: "Login failed" });
+    res.status(500).json({ success: false, error: "Login failed" });
   }
 });
 
+// -------------------- RESEND OTP --------------------
 router.post("/resend-otp", async (req, res) => {
   const { email } = req.body;
 
@@ -135,12 +144,12 @@ router.post("/resend-otp", async (req, res) => {
       data: { otpHash, otpExpiresAt },
     });
 
-    console.log(`New OTP for ${email}: ${otp}`);
+    console.log(`New OTP for ${email}: ${otp}`); // For testing
 
     res.json({ success: true, message: "OTP resent successfully" });
   } catch (err) {
     console.error(err);
-    res.status(400).json({ success: false, error: "Failed to resend OTP" });
+    res.status(500).json({ success: false, error: "Failed to resend OTP" });
   }
 });
 
