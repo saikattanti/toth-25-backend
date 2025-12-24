@@ -1,10 +1,13 @@
 import express from "express";
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../utils/prisma.js";
+import { authMiddleware, adminMiddleware } from "../../middleware/auth.middleware.js";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-router.get("/", async (req, res) => {
+// All routes require authentication
+router.use(authMiddleware);
+
+router.get("/", adminMiddleware, async (req, res) => {
   try {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -29,6 +32,13 @@ router.get("/:id", async (req, res) => {
   const userId = parseInt(req.params.id);
 
   try {
+    // Users can only view their own profile, admins can view any
+    if (!req.user.isAdmin && req.user.id !== userId) {
+      return res.status(403).json({ 
+        success: false, 
+        error: "Access denied" 
+      });
+    }
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -53,7 +63,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", adminMiddleware, async (req, res) => {
   const userId = parseInt(req.params.id);
 
   try {

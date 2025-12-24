@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url  	    = env("DATABASE_URL")
+}
+
+model User {
+  id               Int         @id @default(autoincrement())
+  email            String      @unique
+  password         String
+  
+  // Profile fields (completed in step 3)
+  fullName         String?
+  classRollNo      String?
+  phoneNumber      String?     @unique
+  department       String?
+  
+  // Status tracking
+  emailVerified    Boolean     @default(false)
+  profileCompleted Boolean     @default(false)
+  isAdmin          Boolean     @default(false)
+  
+  // OTP fields
+  otpHash          String?
+  otpExpiresAt     DateTime?
+  
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  
+  // Relations
+  scans            Scan[]
+  gameSession      GameSession?
+  createdRiddles   Riddle[]    @relation("CreatedBy")
+  updatedRiddles   Riddle[]    @relation("UpdatedBy")
+  
+  @@index([email])
+}
+
+model Riddle {
+  id               Int      @id @default(autoincrement())
+  title            String
+  encryptedPuzzle  String   @db.Text
+  encryptionKey    String
+  solution         String   @db.Text
+  points           Int      @default(10)
+  orderNumber      Int?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  createdBy        Int
+  updatedAt        DateTime @updatedAt
+  updatedBy        Int
+  
+  // Relations
+  creator          User     @relation("CreatedBy", fields: [createdBy], references: [id], onDelete: Cascade)
+  updater          User     @relation("UpdatedBy", fields: [updatedBy], references: [id], onDelete: Cascade)
+  scans            Scan[]
+  
+  @@index([createdBy])
+  @@index([updatedBy])
+  @@index([isActive])
+}
+
+model Scan {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  riddleId  Int
+  scannedAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  riddle    Riddle   @relation(fields: [riddleId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([riddleId])
+  @@index([scannedAt])
+}
+
+model GameSession {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  isCompleted   Boolean  @default(false)
+  totalScans    Int      @default(0)
+  uniqueRiddles Int      @default(0)
+  totalPoints   Int      @default(0)
+  
+  // Relations
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([isCompleted])
+  @@index([totalPoints])
+}

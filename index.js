@@ -3,17 +3,20 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import morgan from "morgan";
-import { PrismaClient } from "@prisma/client";
+import prisma from "./utils/prisma.js";
 
 import authRoutes from "./routes/api/auth.js";
 import usersRoutes from "./routes/api/users.js";
+import scanRoutes from "./routes/api/scan.js";
+import gameRoutes from "./routes/api/game.js";
+import adminRoutes from "./routes/api/admin.js";
+import leaderboardRoutes from "./routes/api/leaderboard.js";
 
 // -------------------- ENV --------------------
 dotenv.config();
 
 // -------------------- APP --------------------
 const app = express();
-const prisma = new PrismaClient();
 
 // -------------------- MIDDLEWARE --------------------
 app.use(morgan("dev"));
@@ -32,8 +35,12 @@ app.options("*", cors()); // Preflight
 app.use(express.json());
 
 // -------------------- ROUTES --------------------
-app.use("/auth", authRoutes); // /auth/register, /auth/login, /auth/verify-otp
-app.use("/users", usersRoutes); // /users GET & DELETE
+app.use("/auth", authRoutes);
+app.use("/users", usersRoutes);
+app.use("/scan", scanRoutes);
+app.use("/game", gameRoutes);
+app.use("/admin", adminRoutes);
+app.use("/leaderboard", leaderboardRoutes);
 
 // -------------------- HEALTH CHECK --------------------
 app.get("/health", async (req, res) => {
